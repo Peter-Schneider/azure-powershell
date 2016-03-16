@@ -28,6 +28,10 @@ namespace Microsoft.WindowsAzure.Commands.Websites
         [ValidateNotNullOrEmpty]
         public Hashtable ConnectionString { get; set; }
 
+        [Parameter(ParameterSetName = "Package", Position = 3, Mandatory = false, ValueFromPipelineByPropertyName = true, HelpMessage = "The configuration tokens to use for the deployment.")]
+        [ValidateNotNullOrEmpty]
+        public string Tokens { get; set; }
+
         [Parameter(Mandatory = false, ParameterSetName = "Package", HelpMessage = "The WebDeploy SetParameters.xml file to transform configuration within the package.")]
         public string SetParametersFile { get; set; }
 
@@ -83,6 +87,33 @@ namespace Microsoft.WindowsAzure.Commands.Websites
                 }
             }
 
+            if (!File.Exists(fullSetParametersFile))
+            {
+                if (File.Exists(Path.Combine(Path.GetDirectoryName(fullPackage), fullSetParametersFile)))
+                {
+                    WriteVerbose("Setting path for Parameters file to local one to package: " + Path.Combine(Path.GetDirectoryName(fullPackage), fullSetParametersFile));
+                    fullSetParametersFile = Path.Combine(Path.GetDirectoryName(fullPackage),fullSetParametersFile);
+                }
+            }
+
+            // If tokens are passed in, update the parameters file if there is one
+            if (!string.IsNullOrEmpty(Tokens) && !string.IsNullOrEmpty(fullSetParametersFile))
+            {
+                // Convert tokens string to hashtable
+                string[] tokenSplit = Tokens.Split(';');
+
+                WriteVerbose(string.Format("Replacing tokens in {0}", fullSetParametersFile));
+                var fileContents = File.ReadAllText(fullSetParametersFile);
+
+                foreach (string pair in tokenSplit)
+                {
+                    string[] data = pair.Split('=');
+                    fileContents = fileContents.Replace(string.Format("__{0}__", data[0].Replace("\"", "")), data[1].Replace("\"", ""));
+                }
+
+                File.WriteAllText(fullSetParametersFile, fileContents);
+            }
+
             try
             {
                 // Publish the package.
@@ -100,7 +131,7 @@ namespace Microsoft.WindowsAzure.Commands.Websites
         /// Generate dynamic parameters based on the connection strings in the Web.config.
         /// It will look at 2 Web.config files:
         /// 1. Web.config
-        /// 2. Web.<configuration>.config (like Web.Release.config)
+        /// 2. Web.&lt;configuration&gt;.config (like Web.Release.config)
         /// This only works when -ProjectFile is used and -ConnectionString is not used.
         /// </summary>
         /// <returns>The dynamic parameters.</returns>

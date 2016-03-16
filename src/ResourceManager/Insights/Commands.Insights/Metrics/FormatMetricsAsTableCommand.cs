@@ -16,8 +16,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Management.Automation;
 using Microsoft.Azure.Commands.Insights.OutputClasses;
+using Microsoft.Azure.Commands.ResourceManager.Common;
 using Microsoft.Azure.Insights.Models;
-using Microsoft.WindowsAzure.Commands.Utilities.Common;
 
 namespace Microsoft.Azure.Commands.Insights.Metrics
 {
@@ -25,7 +25,7 @@ namespace Microsoft.Azure.Commands.Insights.Metrics
     /// Get the list of metric definition for a resource.
     /// </summary>
     [Cmdlet(VerbsCommon.Format, "MetricsAsTable"), OutputType(typeof(PSMetricTabularResult[]))]
-    public class FormatMetricsAsTableCommand : AzurePSCmdlet
+    public class FormatMetricsAsTableCommand : AzureRMCmdlet
     {
         /// <summary>
         /// Gets or sets the array of metrics of the cmdlet
@@ -76,6 +76,8 @@ namespace Microsoft.Azure.Commands.Insights.Metrics
         /// </summary>
         public override void ExecuteCmdlet()
         {
+            WriteWarning("This cmdlet is being modified to enable better experience and may contain breaking changes in a future release.");
+
             WriteObject(this.ProcessParameter());
         }
     }

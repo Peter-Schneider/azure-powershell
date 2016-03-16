@@ -114,9 +114,12 @@ namespace Microsoft.Azure.Commands.Insights.Alerts
         /// <summary>
         /// Execute the cmdlet
         /// </summary>
-        protected override void ExecuteCmdletInternal()
+        protected override void ProcessRecordInternal()
         {
+            WriteWarning("This cmdlet is being modified to enable better experience and may contain breaking changes in a future release.");
+
             RuleCreateOrUpdateParameters parameters = this.CreateSdkCallParameters();
+
             var result = this.InsightsManagementClient.AlertOperations.CreateOrUpdateRuleAsync(resourceGroupName: this.ResourceGroup, parameters: parameters).Result;
             WriteObject(result);
         }

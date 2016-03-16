@@ -19,6 +19,7 @@ using Microsoft.Azure.Management.Compute;
 using Microsoft.Azure.Management.Compute.Models;
 using System.Collections.Generic;
 using System.Management.Automation;
+using Microsoft.Rest.Azure;
 
 namespace Microsoft.Azure.Commands.Compute
 {
@@ -38,17 +39,20 @@ namespace Microsoft.Azure.Commands.Compute
         {
             base.ExecuteCmdlet();
 
-            ListUsagesResponse result = this.UsageClient.List(this.Location.Canonicalize());
-
-            List<PSUsage> psResultList = new List<PSUsage>();
-            foreach (var item in result.Usages)
+            ExecuteClientAction(() =>
             {
-                var psItem = Mapper.Map<PSUsage>(item);
-                psItem = Mapper.Map<AzureOperationResponse, PSUsage>(result, psItem);
-                psResultList.Add(psItem);
-            }
+                AzureOperationResponse<IPage<Usage>> result = this.UsageClient.ListWithHttpMessagesAsync(this.Location.Canonicalize()).GetAwaiter().GetResult();
 
-            WriteObject(psResultList, true);
+                var psResultList = new List<PSUsage>();
+                foreach (var item in result.Body)
+                {
+                    var psItem = Mapper.Map<PSUsage>(item);
+                    psItem = Mapper.Map(result, psItem);
+                    psResultList.Add(psItem);
+                }
+
+                WriteObject(psResultList, true);
+            });
         }
     }
 }

@@ -71,7 +71,7 @@ namespace Microsoft.Azure.Commands.Insights.OutputClasses
             {
                 output.AppendLine();
                 output.AddSpacesInFront(indentationTabs).AppendLine("EventName             : " + ruleEventDataSource.EventName);
-                output.AddSpacesInFront(indentationTabs).AppendLine("EventSource           : " + ruleEventDataSource.EventSource);
+                output.AddSpacesInFront(indentationTabs).AppendLine("Category              : " + ruleEventDataSource.EventSource);
                 output.AddSpacesInFront(indentationTabs).AppendLine("Level                 : " + ruleEventDataSource.Level);
                 output.AddSpacesInFront(indentationTabs).AppendLine("OperationName         : " + ruleEventDataSource.OperationName);
                 output.AddSpacesInFront(indentationTabs).AppendLine("ResourceGroupName     : " + ruleEventDataSource.ResourceGroupName);

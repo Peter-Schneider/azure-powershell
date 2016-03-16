@@ -22,9 +22,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using Hyak.Common;
 using Microsoft.Azure.Commands.Resources.Models.Authorization;
+using Microsoft.Azure.Commands.ResourceManager.Cmdlets.Components;
+using Microsoft.Azure.Commands.ResourceManager.Cmdlets.Utilities;
 using Microsoft.Azure.Commands.Tags.Model;
-using Microsoft.Azure.Common.Authentication;
-using Microsoft.Azure.Common.Authentication.Models;
 using Microsoft.Azure.Management.Authorization;
 using Microsoft.Azure.Management.Authorization.Models;
 using Microsoft.Azure.Management.Resources;
@@ -33,6 +33,9 @@ using Microsoft.WindowsAzure.Commands.Common;
 using Microsoft.WindowsAzure.Commands.Utilities.Common;
 using Newtonsoft.Json;
 using ProjectResources = Microsoft.Azure.Commands.Resources.Properties.Resources;
+using System.Net;
+using Microsoft.Azure.Commands.Common.Authentication;
+using Microsoft.Azure.Commands.Common.Authentication.Models;
 
 namespace Microsoft.Azure.Commands.Resources.Models
 {
@@ -59,9 +62,6 @@ namespace Microsoft.Azure.Commands.Resources.Models
 
         public GalleryTemplatesClient GalleryTemplatesClient { get; set; }
 
-        // TODO: http://vstfrd:8080/Azure/RD/_workitems#_a=edit&id=3247094
-        //public IEventsClient EventsClient { get; set; }
-
         public Action<string> VerboseLogger { get; set; }
 
         public Action<string> ErrorLogger { get; set; }
@@ -71,14 +71,12 @@ namespace Microsoft.Azure.Commands.Resources.Models
         /// <summary>
         /// Creates new ResourceManagementClient
         /// </summary>
-        /// <param name="profile">Profile containing resources to manipulate</param>
-        public ResourcesClient(AzureProfile profile)
+        /// <param name="context">Profile containing resources to manipulate</param>
+        public ResourcesClient(AzureContext context)
             : this(
-                AzureSession.ClientFactory.CreateClient<ResourceManagementClient>(profile, AzureEnvironment.Endpoint.ResourceManager),
-                new GalleryTemplatesClient(profile.Context),
-                // TODO: http://vstfrd:8080/Azure/RD/_workitems#_a=edit&id=3247094
-                //AzureSession.ClientFactory.CreateClient<EventsClient>(context, AzureEnvironment.Endpoint.ResourceManager),
-                AzureSession.ClientFactory.CreateClient<AuthorizationManagementClient>(profile.Context, AzureEnvironment.Endpoint.ResourceManager))
+                AzureSession.ClientFactory.CreateClient<ResourceManagementClient>(context, AzureEnvironment.Endpoint.ResourceManager),
+                new GalleryTemplatesClient(context),
+                AzureSession.ClientFactory.CreateClient<AuthorizationManagementClient>(context, AzureEnvironment.Endpoint.ResourceManager))
         {
 
         }
@@ -92,13 +90,9 @@ namespace Microsoft.Azure.Commands.Resources.Models
         public ResourcesClient(
             IResourceManagementClient resourceManagementClient,
             GalleryTemplatesClient galleryTemplatesClient,
-            // TODO: http://vstfrd:8080/Azure/RD/_workitems#_a=edit&id=3247094
-            //IEventsClient eventsClient,
             IAuthorizationManagementClient authorizationManagementClient)
         {
             GalleryTemplatesClient = galleryTemplatesClient;
-            // TODO: http://vstfrd:8080/Azure/RD/_workitems#_a=edit&id=3247094
-            //EventsClient = eventsClient;
             AuthorizationManagementClient = authorizationManagementClient;
             this.ResourceManagementClient = resourceManagementClient;
         }
@@ -115,7 +109,7 @@ namespace Microsoft.Azure.Commands.Resources.Models
         {
             if (templateParameterObject != null)
             {
-                return SerializeHashtable(templateParameterObject, addValueLayer: true);
+                return SerializeHashtable(templateParameterObject, addValueLayer: false);
             }
             else
             {
@@ -213,7 +207,7 @@ namespace Microsoft.Azure.Commands.Resources.Models
             }
         }
 
-        private DeploymentExtended ProvisionDeploymentStatus(string resourceGroup, string deploymentName, Deployment deployment)
+        public DeploymentExtended ProvisionDeploymentStatus(string resourceGroup, string deploymentName, Deployment deployment)
         {
             operations = new List<DeploymentOperation>();
 
@@ -251,23 +245,40 @@ namespace Microsoft.Azure.Commands.Resources.Models
 
                 if (operation.Properties.ProvisioningState != ProvisioningState.Failed)
                 {
-                    statusMessage = string.Format(normalStatusFormat,
+                    if (operation.Properties.TargetResource != null)
+                    {
+                        statusMessage = string.Format(normalStatusFormat,
                         operation.Properties.TargetResource.ResourceType,
                         operation.Properties.TargetResource.ResourceName,
                         operation.Properties.ProvisioningState.ToLower());
 
-                    WriteVerbose(statusMessage);
+                        WriteVerbose(statusMessage);
+                    }
                 }
                 else
                 {
                     string errorMessage = ParseErrorMessage(operation.Properties.StatusMessage);
 
-                    statusMessage = string.Format(failureStatusFormat,
+                    if(operation.Properties.TargetResource != null)
+                    {
+                        statusMessage = string.Format(failureStatusFormat,
                         operation.Properties.TargetResource.ResourceType,
                         operation.Properties.TargetResource.ResourceName,
                         errorMessage);
 
-                    WriteError(statusMessage);
+                        WriteError(statusMessage);
+                    }
+                    else
+                    {
+                        WriteError(errorMessage);
+                    }
+
+                    List<string> detailedMessage = ParseDetailErrorMessage(operation.Properties.StatusMessage);
+
+                    if (detailedMessage != null)
+                    {
+                        detailedMessage.ForEach(s => WriteError(s));
+                    }
                 }
             }
         }
@@ -283,6 +294,24 @@ namespace Microsoft.Azure.Commands.Resources.Models
             {
                 return error.Message;
             }
+        }
+
+        public static List<string> ParseDetailErrorMessage(string statusMessage)
+        {
+            if(!string.IsNullOrEmpty(statusMessage))
+            {
+                List<string> detailedMessage = new List<string>();
+                dynamic errorMessage = JsonConvert.DeserializeObject(statusMessage);
+                if(errorMessage.error != null && errorMessage.error.details !=null)
+                {
+                    foreach(var detail in errorMessage.error.details)
+                    {
+                        detailedMessage.Add(detail.message.ToString());
+                    }
+                }
+                return detailedMessage;
+            }
+            return null;
         }
 
         private DeploymentExtended WaitDeploymentStatus(
@@ -302,7 +331,7 @@ namespace Microsoft.Azure.Commands.Resources.Models
                 }
 
                 deployment = ResourceManagementClient.Deployments.Get(resourceGroup, deploymentName).Deployment;
-                Thread.Sleep(2000);
+                TestMockSupport.Delay(10000);
 
             } while (!status.Any(s => s.Equals(deployment.Properties.ProvisioningState, StringComparison.OrdinalIgnoreCase)));
 
@@ -319,21 +348,80 @@ namespace Microsoft.Azure.Commands.Resources.Models
                 {
                     newOperations.Add(operation);
                 }
+
+                //If nested deployment, get the operations under those deployments as well
+                if(operation.Properties.TargetResource != null && operation.Properties.TargetResource.ResourceType.Equals(Constants.MicrosoftResourcesDeploymentType, StringComparison.OrdinalIgnoreCase))
+                {
+                    HttpStatusCode statusCode;
+                    Enum.TryParse<HttpStatusCode>(operation.Properties.StatusCode, out statusCode);
+                    if(!statusCode.IsClientFailureRequest())
+                    {
+                        List<DeploymentOperation> newNestedOperations = new List<DeploymentOperation>();
+                        DeploymentOperationsListResult result;
+
+                        result = ResourceManagementClient.DeploymentOperations.List(
+                            resourceGroupName: ResourceIdUtility.GetResourceGroupName(operation.Properties.TargetResource.Id),
+                            deploymentName: operation.Properties.TargetResource.ResourceName,
+                            parameters: null);
+
+                        newNestedOperations = GetNewOperations(operations, result.Operations);
+
+                        foreach (DeploymentOperation op in newNestedOperations)
+                        {
+                            DeploymentOperation nestedOperationWithSameIdAndProvisioningState = newOperations.Find(o => o.OperationId.Equals(op.OperationId) && o.Properties.ProvisioningState.Equals(op.Properties.ProvisioningState));
+
+                            if (nestedOperationWithSameIdAndProvisioningState == null)
+                            {
+                                newOperations.Add(op);
+                            }
+                        }
+                    }
+                }
             }
 
             return newOperations;
         }
 
-        private Deployment CreateBasicDeployment(ValidatePSResourceGroupDeploymentParameters parameters)
+        private Deployment CreateBasicDeployment(ValidatePSResourceGroupDeploymentParameters parameters, DeploymentMode deploymentMode, string debugSetting)
         {
             Deployment deployment = new Deployment
             {
                 Properties = new DeploymentProperties {
-                    Mode = DeploymentMode.Incremental,
-                    Template = GetTemplate(parameters.TemplateFile, parameters.GalleryTemplateIdentity),
-                    Parameters = GetDeploymentParameters(parameters.TemplateParameterObject)
+                    Mode = deploymentMode
                 }
             };
+
+            if(!string.IsNullOrEmpty(debugSetting))
+            {
+                deployment.Properties.DebugSetting = new DeploymentDebugSetting
+                {
+                    DeploymentDebugDetailLevel = debugSetting
+                };
+            }
+
+            if (Uri.IsWellFormedUriString(parameters.TemplateFile, UriKind.Absolute))
+            {
+                deployment.Properties.TemplateLink = new TemplateLink
+                {
+                    Uri = new Uri(parameters.TemplateFile)
+                };
+            }
+            else
+            {
+                deployment.Properties.Template = FileUtilities.DataStore.ReadFileAsText(parameters.TemplateFile);
+            }
+
+            if (Uri.IsWellFormedUriString(parameters.ParameterUri, UriKind.Absolute))
+            {
+                deployment.Properties.ParametersLink = new ParametersLink
+                {
+                    Uri = new Uri(parameters.ParameterUri)
+                };
+            }
+            else
+            {
+                deployment.Properties.Parameters = GetDeploymentParameters(parameters.TemplateParameterObject);
+            }
 
             return deployment;
         }
@@ -346,18 +434,6 @@ namespace Microsoft.Azure.Commands.Resources.Models
                 deployment);
 
             return new TemplateValidationInfo(validationResult);
-        }
-
-        internal List<PSPermission> GetResourceGroupPermissions(string resourceGroup)
-        {
-            PermissionGetResult permissionsResult = AuthorizationManagementClient.Permissions.ListForResourceGroup(resourceGroup);
-
-            if (permissionsResult != null)
-            {
-                return permissionsResult.Permissions.Select(p => p.ToPSPermission()).ToList();
-            }
-
-            return null;
         }
 
         internal List<PSPermission> GetResourcePermissions(ResourceIdentifier identity)
@@ -374,16 +450,26 @@ namespace Microsoft.Azure.Commands.Resources.Models
             return null;
         }
 
-        public virtual PSResourceProvider[] ListPSResourceProviders(string providerName = null)
+        public virtual PSResourceProvider[] ListPSResourceProviders(string providerName = null, bool listAvailable = false, string location = null)
         {
-            return this.ListResourceProviders(providerName: providerName, listAvailable: false)
-                .Select(provider => provider.ToPSResourceProvider())
-                .ToArray();
-        }
+            var providers = this.ListResourceProviders(providerName: providerName, listAvailable: listAvailable);
 
-        public virtual PSResourceProvider[] ListPSResourceProviders(bool listAvailable)
-        {
-            return this.ListResourceProviders(providerName: null, listAvailable: listAvailable)
+            if (string.IsNullOrEmpty(location))
+            {
+                return providers
+                    .Select(provider => provider.ToPSResourceProvider())
+                    .ToArray();
+            }
+
+            foreach (var provider in providers)
+            {
+                provider.ResourceTypes = provider.ResourceTypes
+                    .Where(type => !type.Locations.Any() || this.ContainsNormalizedLocation(type.Locations.ToArray(), location))
+                    .ToList();
+            }
+
+            return providers
+                .Where(provider => provider.ResourceTypes.Any())
                 .Select(provider => provider.ToPSResourceProvider())
                 .ToArray();
         }
@@ -417,6 +503,16 @@ namespace Microsoft.Azure.Commands.Resources.Models
                     ? returnList
                     : returnList.Where(this.IsProviderRegistered).ToList();
             }
+        }
+
+        private bool ContainsNormalizedLocation(string[] locations, string location)
+        {
+            return locations.Any(existingLocation => this.NormalizeLetterOrDigitToUpperInvariant(existingLocation).Equals(this.NormalizeLetterOrDigitToUpperInvariant(location)));
+        }
+
+        private string NormalizeLetterOrDigitToUpperInvariant(string value)
+        {
+            return value != null ? new string(value.Where(c => char.IsLetterOrDigit(c)).ToArray()).ToUpperInvariant() : null;
         }
 
         private bool IsProviderRegistered(Provider provider)
@@ -466,7 +562,7 @@ namespace Microsoft.Azure.Commands.Resources.Models
 
         /// <summary>
         /// Get a mapping of Resource providers that support the operations API (/operations) to the operations api-version supported for that RP 
-        /// (Current logic is to sort the 'api-versions' list and choose the max value to store)
+        /// (Current logic is to prefer the latest "non-test' api-version. If there are no such version, choose the latest one)
         /// </summary>
         public Dictionary<string, string> GetResourceProvidersWithOperationsSupport()
         {
@@ -485,7 +581,36 @@ namespace Microsoft.Azure.Commands.Resources.Models
                         operationsResourceType.ApiVersions != null &&
                         operationsResourceType.ApiVersions.Any())
                     {
-                        providersSupportingOperations.Add(provider.ProviderNamespace, operationsResourceType.ApiVersions.OrderBy(o => o).Last());
+                        string[] allowedTestPrefixes = new[] { "-preview", "-alpha", "-beta", "-rc", "-privatepreview" };
+                        List<string> nonTestApiVersions = new List<string>();
+                        
+                        foreach (string apiVersion in operationsResourceType.ApiVersions) 
+                        {
+                            bool isTestApiVersion = false;
+                            foreach (string testPrefix in allowedTestPrefixes)
+                            {
+                                if (apiVersion.EndsWith(testPrefix, StringComparison.InvariantCultureIgnoreCase))
+                                {
+                                    isTestApiVersion = true;
+                                    break;
+                                }
+                            }
+
+                            if(isTestApiVersion == false && !nonTestApiVersions.Contains(apiVersion))
+                            {
+                                nonTestApiVersions.Add(apiVersion);
+                            }
+                        }
+
+                        if(nonTestApiVersions.Any())
+                        {
+                            string latestNonTestApiVersion = nonTestApiVersions.OrderBy(o => o).Last();
+                            providersSupportingOperations.Add(provider.ProviderNamespace, latestNonTestApiVersion);
+                        }
+                        else
+                        {
+                            providersSupportingOperations.Add(provider.ProviderNamespace, operationsResourceType.ApiVersions.OrderBy(o => o).Last());
+                        }
                     }
                 }
             }
@@ -505,15 +630,42 @@ namespace Microsoft.Azure.Commands.Resources.Models
             {
                 foreach (var identity in identities)
                 {
-                    task = this.ResourceManagementClient.ResourceProviderOperationDetails.ListAsync(identity);
-                    task.Wait();
+                    try
+                    {
+                        task = this.ResourceManagementClient.ResourceProviderOperationDetails.ListAsync(identity);
+                        task.Wait(10000);
 
-                    // Add operations for this provider. 
-                    allProviderOperations.AddRange(task.Result.ResourceProviderOperationDetails.Select(op => op.ToPSResourceProviderOperation()));
+                        // Add operations for this provider.
+                        if (task.IsCompleted)
+                        {
+                            allProviderOperations.AddRange(task.Result.ResourceProviderOperationDetails.Select(op => op.ToPSResourceProviderOperation()));
+                        }
+                    }
+                    catch(AggregateException ae)
+                    {
+                         AggregateException flattened = ae.Flatten();
+                         foreach (Exception inner in flattened.InnerExceptions)
+                         {
+                             // Do nothing for now - this is just a mitigation against one provider which hasn't implemented the operations API correctly
+                             //WriteWarning(inner.ToString());
+                         }
+                    }
                 }
             }
               
             return allProviderOperations;
+        }
+
+        public ProviderOperationsMetadata GetProviderOperationsMetadata(string providerNamespace)
+        {
+            ProviderOperationsMetadataGetResult result = this.ResourceManagementClient.ProviderOperationsMetadata.Get(providerNamespace);
+            return result.Provider;
+        }
+
+        public IList<ProviderOperationsMetadata> ListProviderOperationsMetadata()
+        {
+           ProviderOperationsMetadataListResult result = this.ResourceManagementClient.ProviderOperationsMetadata.List();
+           return result.Providers;
         }
     }
 }

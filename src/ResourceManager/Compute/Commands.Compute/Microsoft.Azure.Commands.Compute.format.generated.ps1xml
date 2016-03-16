@@ -175,12 +175,20 @@
                 <PropertyName>Location</PropertyName>
               </ListItem>
               <ListItem>
+                <Label>LicenseType</Label>
+                <PropertyName>LicenseType</PropertyName>
+              </ListItem>
+              <ListItem>
                 <Label>Tags</Label>
                 <PropertyName>TagsText</PropertyName>
               </ListItem>
               <ListItem>
                 <Label>AvailabilitySetReference</Label>
                 <PropertyName>AvailabilitySetReferenceText</PropertyName>
+              </ListItem>
+              <ListItem>
+                <Label>DiagnosticsProfile</Label>
+                <PropertyName>DiagnosticsProfileText</PropertyName>
               </ListItem>
               <ListItem>
                 <Label>Extensions</Label>

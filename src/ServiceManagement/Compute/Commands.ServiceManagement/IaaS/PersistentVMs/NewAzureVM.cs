@@ -18,19 +18,20 @@ using System.Linq;
 using System.Management.Automation;
 using System.Net;
 using AutoMapper;
-using Microsoft.Azure.Common.Authentication.Models;
+using Hyak.Common;
+using Microsoft.Azure;
+using Microsoft.Azure.Commands.Common.Authentication.Models;
+using Microsoft.WindowsAzure.Commands.ServiceManagement.Common;
 using Microsoft.WindowsAzure.Commands.ServiceManagement.Helpers;
 using Microsoft.WindowsAzure.Commands.ServiceManagement.Properties;
 using Microsoft.WindowsAzure.Commands.Utilities.Common;
 using Microsoft.WindowsAzure.Management.Compute.Models;
 using Microsoft.WindowsAzure.Management.Compute;
 using Microsoft.WindowsAzure.Storage;
-using Microsoft.Azure;
-using Hyak.Common;
 
 namespace Microsoft.WindowsAzure.Commands.ServiceManagement.IaaS.PersistentVMs
 {
-    [Cmdlet(VerbsCommon.New, "AzureVM", DefaultParameterSetName = "ExistingService"), OutputType(typeof(ManagementOperationContext))]
+    [Cmdlet(VerbsCommon.New, ProfileNouns.VirtualMachine, DefaultParameterSetName = "ExistingService"), OutputType(typeof(ManagementOperationContext))]
     public class NewAzureVMCommand : IaaSDeploymentManagementCmdletBase
     {
         private bool createdDeployment;
@@ -200,7 +201,7 @@ namespace Microsoft.WindowsAzure.Commands.ServiceManagement.IaaS.PersistentVMs
                         if (existingService == null || existingService.Properties == null)
                         {
                             // The same service name is already used by another subscription.
-                            this.WriteExceptionDetails(ex);
+                            WriteExceptionError(ex);
                             return;
                         }
                         else if ((string.IsNullOrEmpty(existingService.Properties.Location) &&
@@ -217,13 +218,13 @@ namespace Microsoft.WindowsAzure.Commands.ServiceManagement.IaaS.PersistentVMs
                             // The same service name is already created under the same subscription,
                             // but its affinity group or location is not matched with the given parameter.
                             this.WriteWarning("Location or AffinityGroup name is not matched with the existing service");
-                            this.WriteExceptionDetails(ex);
+                            WriteExceptionError(ex);
                             return;
                         }
                     }
                     else
                     {
-                        this.WriteExceptionDetails(ex);
+                        WriteExceptionError(ex);
                         return;
                     }
                 }
@@ -335,7 +336,7 @@ namespace Microsoft.WindowsAzure.Commands.ServiceManagement.IaaS.PersistentVMs
                     }
                     else
                     {
-                        this.WriteExceptionDetails(ex);
+                        WriteExceptionError(ex);
                     }
 
                     return;
@@ -464,6 +465,14 @@ namespace Microsoft.WindowsAzure.Commands.ServiceManagement.IaaS.PersistentVMs
             if (persistentVM.ConfigurationSets != null)
             {
                 PersistentVMHelper.MapConfigurationSets(persistentVM.ConfigurationSets).ForEach(c => result.ConfigurationSets.Add(c));
+            }
+
+            if (persistentVM.DebugSettings != null)
+            {
+                result.DebugSettings = new DebugSettings
+                {
+                    BootDiagnosticsEnabled = persistentVM.DebugSettings.BootDiagnosticsEnabled
+                };
             }
 
             return result;

@@ -13,12 +13,10 @@
 // ----------------------------------------------------------------------------------
 
 using System;
-using System.Collections.Generic;
-using System.Globalization;
 using System.Management.Automation;
 using Microsoft.Azure.Commands.Insights.Properties;
+using Microsoft.Azure.Commands.ResourceManager.Common;
 using Microsoft.Azure.Management.Insights.Models;
-using Microsoft.WindowsAzure.Commands.Utilities.Common;
 
 namespace Microsoft.Azure.Commands.Insights.Autoscale
 {
@@ -26,7 +24,7 @@ namespace Microsoft.Azure.Commands.Insights.Autoscale
     /// Create an Autoscale rule
     /// </summary>
     [Cmdlet(VerbsCommon.New, "AutoscaleRule"), OutputType(typeof(ScaleRule))]
-    public class NewAutoscaleRuleCommand : AzurePSCmdlet
+    public class NewAutoscaleRuleCommand : AzureRMCmdlet
     {
         private readonly TimeSpan MinimumTimeWindow = TimeSpan.FromMinutes(5);
         private readonly TimeSpan MinimumTimeGrain = TimeSpan.FromMinutes(1);
@@ -115,6 +113,8 @@ namespace Microsoft.Azure.Commands.Insights.Autoscale
         /// </summary>
         public override void ExecuteCmdlet()
         {
+            WriteWarning("This cmdlet is being modified to enable better experience and may contain breaking changes in a future release.");
+
             ScaleRule rule = this.CreateSettingRule();
             WriteObject(rule);
         }

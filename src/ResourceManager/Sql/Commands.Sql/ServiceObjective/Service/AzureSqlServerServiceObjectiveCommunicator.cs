@@ -12,14 +12,16 @@
 // limitations under the License.
 // ----------------------------------------------------------------------------------
 
-using Microsoft.Azure.Common.Authentication;
-using Microsoft.Azure.Common.Authentication.Models;
+using Microsoft.Azure.ServiceManagemenet.Common;
+using Microsoft.Azure.ServiceManagemenet.Common.Models;
 using Microsoft.Azure.Management.Resources;
 using Microsoft.Azure.Management.Sql;
 using Microsoft.Azure.Management.Sql.Models;
 using Microsoft.WindowsAzure.Management.Storage;
 using System;
 using System.Collections.Generic;
+using Microsoft.Azure.Commands.Common.Authentication;
+using Microsoft.Azure.Commands.Common.Authentication.Models;
 using Microsoft.Azure.Commands.Sql.Common;
 
 namespace Microsoft.Azure.Commands.Sql.ServiceObjective.Services
@@ -42,19 +44,19 @@ namespace Microsoft.Azure.Commands.Sql.ServiceObjective.Services
         /// <summary>
         /// Gets or sets the Azure profile
         /// </summary>
-        public AzureProfile Profile { get; set; }
+        public AzureContext Context { get; set; }
 
         /// <summary>
         /// Creates a communicator for Azure Sql Databases ServiceObjective
         /// </summary>
         /// <param name="profile"></param>
         /// <param name="subscription"></param>
-        public AzureSqlServerServiceObjectiveCommunicator(AzureProfile profile, AzureSubscription subscription)
+        public AzureSqlServerServiceObjectiveCommunicator(AzureContext context)
         {
-            Profile = profile;
-            if (subscription != Subscription)
+            Context = context;
+            if (context.Subscription != Subscription)
             {
-                Subscription = subscription;
+                Subscription = context.Subscription;
                 SqlClient = null;
             }
         }
@@ -85,7 +87,7 @@ namespace Microsoft.Azure.Commands.Sql.ServiceObjective.Services
             // Get the SQL management client for the current subscription
             if (SqlClient == null)
             {
-                SqlClient = AzureSession.ClientFactory.CreateClient<SqlManagementClient>(Profile, Subscription, AzureEnvironment.Endpoint.ResourceManager);
+                SqlClient = AzureSession.ClientFactory.CreateClient<SqlManagementClient>(Context, AzureEnvironment.Endpoint.ResourceManager);
             }
             SqlClient.HttpClient.DefaultRequestHeaders.Remove(Constants.ClientRequestIdHeaderName);
             SqlClient.HttpClient.DefaultRequestHeaders.Add(Constants.ClientRequestIdHeaderName, clientRequestId);

@@ -40,5 +40,40 @@ namespace Microsoft.Azure.Commands.RedisCache.Test.ScenarioTests
         {
             RunPowerShellTest("Test-RedisCachePipeline");
         }
+
+        [Fact]
+        [Trait(Category.AcceptanceType, Category.CheckIn)]
+        public void TestSetRedisCacheBugFixTest()
+        {
+            RunPowerShellTest("Test-SetRedisCacheBugFixTest");
+        }
+
+        [Fact]
+        [Trait(Category.AcceptanceType, Category.CheckIn)]
+        public void TestMaxMemoryPolicyErrorCheck()
+        {
+            RunPowerShellTest("Test-MaxMemoryPolicyErrorCheck");
+        }
+
+        [Fact]
+        [Trait(Category.AcceptanceType, Category.CheckIn)]
+        public void TestRedisCacheClustering()
+        {
+            RunPowerShellTest("Test-RedisCacheClustering");
+        }
+
+        [Fact]
+        [Trait(Category.AcceptanceType, Category.CheckIn)]
+        public void TestSetAzureRedisCacheDiagnostics()
+        {
+            RunPowerShellTest("Test-SetAzureRedisCacheDiagnostics");
+        }
+
+        [Fact]
+        [Trait(Category.AcceptanceType, Category.CheckIn)]
+        public void TestRemoveAzureRedisCacheDiagnostics()
+        {
+            RunPowerShellTest("Test-RemoveAzureRedisCacheDiagnostics");
+        }
     }
 }

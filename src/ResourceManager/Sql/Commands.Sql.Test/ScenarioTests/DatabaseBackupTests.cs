@@ -21,10 +21,28 @@ namespace Microsoft.Azure.Commands.Sql.Test.ScenarioTests
     public class DatabaseBackupTests : SqlTestsBase
     {
         [Fact]
-        [Trait(Category.Sql, Category.CheckIn)]
+        [Trait(Category.AcceptanceType, Category.CheckIn)]
         public void TestListDatabaseRestorePoints()
         {
             RunPowerShellTest("Test-ListDatabaseRestorePoints");
+        }
+        [Fact]
+        [Trait(Category.AcceptanceType, Category.CheckIn)]
+        public void TestRestoreGeoBackup()
+        {
+            RunPowerShellTest("Test-RestoreGeoBackup");
+        }
+        [Fact]
+        [Trait(Category.AcceptanceType, Category.CheckIn)]
+        public void TestRestoreDeletedDatabaseBackup()
+        {
+            RunPowerShellTest("Test-RestoreDeletedDatabaseBackup");
+        }
+        [Fact]
+        [Trait(Category.AcceptanceType, Category.CheckIn)]
+        public void TestRestorePointInTimeBackup()
+        {
+            RunPowerShellTest("Test-RestorePointInTimeBackup");
         }
     }
 }

@@ -29,19 +29,19 @@ function Test-ListDatabaseRestorePoints
 
 		# Create data warehouse database with all parameters.
 		$databaseName = Get-DatabaseName
-		$dwdb = New-AzureSqlDatabase -ResourceGroupName $rg.ResourceGroupName -ServerName $server.ServerName -DatabaseName $databaseName `
+		$dwdb = New-AzureRmSqlDatabase -ResourceGroupName $rg.ResourceGroupName -ServerName $server.ServerName -DatabaseName $databaseName `
 			-Edition DataWarehouse -RequestedServiceObjectiveName DW100
 
 		$databaseName = Get-DatabaseName
-		$standarddb = New-AzureSqlDatabase -ResourceGroupName $rg.ResourceGroupName -ServerName $server.ServerName -DatabaseName $databaseName `
+		$standarddb = New-AzureRmSqlDatabase -ResourceGroupName $rg.ResourceGroupName -ServerName $server.ServerName -DatabaseName $databaseName `
 			-Edition Standard -RequestedServiceObjectiveName S0
 
 		# Get restore points from data warehouse database.
-		$restorePoints = Get-AzureSqlDatabaseRestorePoints -ResourceGroupName $rg.ResourceGroupName -ServerName $server.ServerName -DatabaseName $dwdb.DatabaseName
+		$restorePoints = Get-AzureRmSqlDatabaseRestorePoints -ResourceGroupName $rg.ResourceGroupName -ServerName $server.ServerName -DatabaseName $dwdb.DatabaseName
 		Assert-Null $restorePoints # Since the data warehouse database has just been created, it should not have any discrete restore points.
 
 		# Get restore points from standard database through pipe.
-		$restorePoints = $standarddb | Get-AzureSqlDatabaseRestorePoints 
+		$restorePoints = $standarddb | Get-AzureRmSqlDatabaseRestorePoints 
 		Assert-AreEqual $restorePoints.Count 1 # Standard databases should only have 1 continuous restore point.
 		$restorePoint = $restorePoints[0]
 		Assert-AreEqual $restorePoint.RestorePointType Continuous
@@ -52,4 +52,43 @@ function Test-ListDatabaseRestorePoints
 	{
 		Remove-ResourceGroupForTest $rg
 	}
+}
+
+function Test-RestoreGeoBackup
+{
+	# Setup
+	$location = "Southeast Asia"
+	$serverVersion = "12.0"
+	$rg = Get-AzureRmResourceGroup -ResourceGroupName hchung-test2
+	$server = Get-AzureRmSqlServer -ServerName hchung-testsvr2 -ResourceGroupName $rg.ResourceGroupName
+	$db = Get-AzureRmSqlDatabase -ServerName $server.ServerName -DatabaseName hchung-testdb-geo2 -ResourceGroupName $rg.ResourceGroupName
+	$restoredDbName = "powershell_db_georestored"
+
+	Get-AzureRmSqlDatabaseGeoBackup -ResourceGroupName $server.ResourceGroupName -ServerName $server.ServerName -DatabaseName $db.DatabaseName | Restore-AzureRmSqlDatabase -FromGeoBackup -TargetDatabaseName $restoredDbName
+}
+
+function Test-RestoreDeletedDatabaseBackup
+{
+	# Setup
+	$location = "Southeast Asia"
+	$serverVersion = "12.0"
+	$rg = Get-AzureRmResourceGroup -ResourceGroupName hchung-test2
+	$server = Get-AzureRmSqlServer -ServerName hchung-testsvr2 -ResourceGroupName $rg.ResourceGroupName
+	$droppedDbName = "powershell_db_georestored"
+	$restoredDbName = "powershell_db_deleted"
+
+	Get-AzureRmSqlDeletedDatabaseBackup -ResourceGroupName $server.ResourceGroupName -ServerName $server.ServerName -DatabaseName $droppedDbName -DeletionDate "2016-02-23T00:21:22.847Z" | Restore-AzureRmSqlDatabase -FromDeletedDatabaseBackup -TargetDatabaseName $restoredDbName
+}
+
+function Test-RestorePointInTimeBackup
+{
+	# Setup
+	$location = "Southeast Asia"
+	$serverVersion = "12.0"
+	$rg = Get-AzureRmResourceGroup -ResourceGroupName hchung-test
+	$server = Get-AzureRmSqlServer -ServerName hchung-testsvr -ResourceGroupName $rg.ResourceGroupName
+	$db = Get-AzureRmSqlDatabase -ServerName $server.ServerName -DatabaseName hchung-testdb -ResourceGroupName $rg.ResourceGroupName
+	$restoredDbName = "powershell_db_restored"
+
+	Get-AzureRmSqlDatabase -ResourceGroupName $rg.ResourceGroupName -ServerName $server.ServerName -DatabaseName $db.DatabaseName | Restore-AzureRmSqlDatabase -FromPointInTimeBackup -PointInTime "2016-02-20T00:06:00Z" -TargetDatabaseName $restoredDbName
 }

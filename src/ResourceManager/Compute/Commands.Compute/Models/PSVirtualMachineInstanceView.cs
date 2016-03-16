@@ -24,6 +24,14 @@ namespace Microsoft.Azure.Commands.Compute.Models
 
         public string Name { get; set; }
 
+        public BootDiagnosticsInstanceView BootDiagnostics { get; set; }
+
+        [JsonIgnore]
+        public string BootDiagnosticsText
+        {
+            get { return JsonConvert.SerializeObject(BootDiagnostics, Formatting.Indented); }
+        }
+
         public IList<DiskInstanceView> Disks { get; set; }
 
         [JsonIgnore]
@@ -74,20 +82,21 @@ namespace Microsoft.Azure.Commands.Compute.Models
             {
                 ResourceGroupName = resourceGroupName,
                 Name = vmName,
+                BootDiagnostics = virtualMachineInstanceView.BootDiagnostics,
                 Disks = virtualMachineInstanceView.Disks,
                 Extensions = virtualMachineInstanceView.Extensions,
                 Statuses = virtualMachineInstanceView.Statuses,
                 PlatformFaultDomain = virtualMachineInstanceView.PlatformFaultDomain,
                 PlatformUpdateDomain = virtualMachineInstanceView.PlatformUpdateDomain,
-                RemoteDesktopThumbprint = virtualMachineInstanceView.RemoteDesktopThumbprint,
-                VMAgent = virtualMachineInstanceView.VMAgent
+                RemoteDesktopThumbprint = virtualMachineInstanceView.RdpThumbPrint,
+                VMAgent = virtualMachineInstanceView.VmAgent
             };
 
             return result;
         }
 
         public static PSVirtualMachineInstanceView ToPSVirtualMachineInstanceView(
-            this VirtualMachineGetResponse response,
+            this VirtualMachine response,
             string resourceGroupName = null,
             string vmName = null)
         {
@@ -96,7 +105,7 @@ namespace Microsoft.Azure.Commands.Compute.Models
                 return null;
             }
 
-            return response.VirtualMachine.InstanceView.ToPSVirtualMachineInstanceView(resourceGroupName, vmName);
+            return response.InstanceView.ToPSVirtualMachineInstanceView(resourceGroupName, vmName);
         }
     }
 }

@@ -60,16 +60,20 @@ namespace Microsoft.Azure.Commands.Compute
         {
             base.ExecuteCmdlet();
 
-            if (Status.IsPresent)
+            ExecuteClientAction(() =>
             {
-                var result = this.VirtualMachineExtensionClient.GetWithInstanceView(this.ResourceGroupName, this.VMName, this.Name);
-                WriteObject(result.ToPSVirtualMachineExtension(this.ResourceGroupName));
-            }
-            else
-            {
-                var result = this.VirtualMachineExtensionClient.Get(this.ResourceGroupName, this.VMName, this.Name);
-                WriteObject(result.ToPSVirtualMachineExtension(this.ResourceGroupName));
-            }
+                if (Status.IsPresent)
+                {
+                    var result = this.VirtualMachineExtensionClient.GetWithInstanceView(this.ResourceGroupName, this.VMName, this.Name);
+                    WriteObject(result.ToPSVirtualMachineExtension(this.ResourceGroupName));
+                }
+                else
+                {
+                    var result = this.VirtualMachineExtensionClient.GetWithHttpMessagesAsync(this.ResourceGroupName,
+                        this.VMName, this.Name).GetAwaiter().GetResult();
+                    WriteObject(result.ToPSVirtualMachineExtension(this.ResourceGroupName));
+                }
+            });
         }
     }
 }

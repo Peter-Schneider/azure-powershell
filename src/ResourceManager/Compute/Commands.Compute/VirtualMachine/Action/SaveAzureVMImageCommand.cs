@@ -22,27 +22,18 @@ using System.IO;
 
 namespace Microsoft.Azure.Commands.Compute
 {
-    [Cmdlet(VerbsData.Save, ProfileNouns.VirtualMachineImage)]
-    [OutputType(typeof(PSComputeLongRunningOperation))]
-    public class SaveAzureVMImageCommand : VirtualMachineBaseCmdlet
+    [Cmdlet(VerbsData.Save, ProfileNouns.VirtualMachineImage, DefaultParameterSetName = ResourceGroupNameParameterSet)]
+    [OutputType(typeof(PSAzureOperationResponse))]
+    public class SaveAzureVMImageCommand : VirtualMachineActionBaseCmdlet
     {
-        public string Name { get; set; }
-
-        [Parameter(
-           Mandatory = true,
-           Position = 0,
-           ValueFromPipelineByPropertyName = true,
-           HelpMessage = "The resource group name.")]
-        [ValidateNotNullOrEmpty]
-        public string ResourceGroupName { get; set; }
-
+        [Alias("VMName")]
         [Parameter(
            Mandatory = true,
            Position = 1,
            ValueFromPipelineByPropertyName = true,
            HelpMessage = "The virtual machine name.")]
         [ValidateNotNullOrEmpty]
-        public string VMName { get; set; }
+        public string Name { get; set; }
 
         [Parameter(
            Mandatory = true,
@@ -79,25 +70,28 @@ namespace Microsoft.Azure.Commands.Compute
         {
             base.ExecuteCmdlet();
 
-            var parameters = new VirtualMachineCaptureParameters
+            ExecuteClientAction(() =>
             {
-                DestinationContainerName = DestinationContainerName,
-                Overwrite = Overwrite.IsPresent,
-                VirtualHardDiskNamePrefix = VHDNamePrefix
-            };
+                var parameters = new VirtualMachineCaptureParameters
+                {
+                    DestinationContainerName = DestinationContainerName,
+                    OverwriteVhds = Overwrite.IsPresent,
+                    VhdPrefix = VHDNamePrefix
+                };
 
-            var op = this.VirtualMachineClient.Capture(
-                this.ResourceGroupName,
-                this.VMName,
-                parameters);
+                var op = this.VirtualMachineClient.CaptureWithHttpMessagesAsync(
+                    this.ResourceGroupName,
+                    this.Name,
+                    parameters).GetAwaiter().GetResult();
 
-            var result = Mapper.Map<PSComputeLongRunningOperation>(op);
+                var result = Mapper.Map<PSAzureOperationResponse>(op);
 
-            if (! string.IsNullOrWhiteSpace(this.Path))
-            {
-                File.WriteAllText(this.Path, result.Output);
-            }
-            WriteObject(result);
+                if (!string.IsNullOrWhiteSpace(this.Path))
+                {
+                    File.WriteAllText(this.Path, op.Body.Output.ToString());
+                }
+                WriteObject(result);
+            });
         }
     }
 }

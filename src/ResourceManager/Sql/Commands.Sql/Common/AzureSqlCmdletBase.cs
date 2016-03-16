@@ -13,8 +13,10 @@
 // ----------------------------------------------------------------------------------
 
 using System.Management.Automation;
+using Microsoft.Azure.Commands.Common.Authentication.Models;
+using Microsoft.Azure.Commands.ResourceManager.Common;
 using Microsoft.Azure.Commands.Sql.Services;
-using Microsoft.Azure.Common.Authentication.Models;
+using Microsoft.Azure.ServiceManagemenet.Common.Models;
 using Microsoft.WindowsAzure.Commands.Utilities.Common;
 
 namespace Microsoft.Azure.Commands.Sql.Common
@@ -22,7 +24,7 @@ namespace Microsoft.Azure.Commands.Sql.Common
     /// <summary>
     /// The base class for all Azure Sql cmdlets
     /// </summary>
-    public abstract class AzureSqlCmdletBase<M, A> : AzurePSCmdlet
+    public abstract class AzureSqlCmdletBase<M, A> : AzureRMCmdlet
     {
         /// <summary>
         /// Stores the per request session Id for all request made in this cmdlet call.
@@ -85,11 +87,21 @@ namespace Microsoft.Azure.Commands.Sql.Common
         protected abstract A InitModelAdapter(AzureSubscription subscription);
 
         /// <summary>
+        /// Transforms the given model object to be an object that is written out
+        /// </summary>
+        /// <param name="model">The about to be written model object</param>
+        /// <returns>The prepared object to be written out</returns>
+        protected virtual object TransformModelToOutputObject(M model)
+        {
+            return model;
+        }
+
+        /// <summary>
         /// Executes the cmdlet
         /// </summary>
         public override void ExecuteCmdlet()
         {
-            ModelAdapter = InitModelAdapter(Profile.Context.Subscription);
+            ModelAdapter = InitModelAdapter(DefaultProfile.Context.Subscription);
             M model = this.GetEntity();
             M updatedModel = this.ApplyUserInputToModel(model);
             M responseModel = this.PersistChanges(updatedModel);
@@ -98,14 +110,14 @@ namespace Microsoft.Azure.Commands.Sql.Common
             {
                 if (WriteResult())
                 {
-                    this.WriteObject(responseModel, true);
+                    this.WriteObject(TransformModelToOutputObject(responseModel), true);
                 }
             }
             else
             {
                 if (WriteResult())
                 {
-                    this.WriteObject(updatedModel);
+                    this.WriteObject(TransformModelToOutputObject(updatedModel));
                 }
             }
         }

@@ -24,7 +24,7 @@ using Microsoft.Azure.Commands.Tags.Model;
 
 namespace Microsoft.Azure.Commands.Network
 {
-    [Cmdlet(VerbsCommon.New, "AzureVirtualNetworkGatewayConnection"), OutputType(typeof(PSVirtualNetworkGatewayConnection))]
+    [Cmdlet(VerbsCommon.New, "AzureRmVirtualNetworkGatewayConnection", DefaultParameterSetName = "SetByResource"), OutputType(typeof(PSVirtualNetworkGatewayConnection))]
     public class NewAzureVirtualNetworkGatewayConnectionCommand : VirtualNetworkGatewayConnectionBaseCmdlet
     {
         [Alias("ResourceName")]
@@ -50,6 +50,13 @@ namespace Microsoft.Azure.Commands.Network
         public string Location { get; set; }
 
         [Parameter(
+         Mandatory = false,
+         ValueFromPipelineByPropertyName = true,
+         HelpMessage = "AuthorizationKey.")]
+        [ValidateNotNullOrEmpty]
+        public string AuthorizationKey { get; set; }
+
+        [Parameter(
              Mandatory = true,
              ValueFromPipelineByPropertyName = true,
              HelpMessage = "First virtual network gateway.")]
@@ -70,12 +77,12 @@ namespace Microsoft.Azure.Commands.Network
         [Parameter(
         Mandatory = true,
         ValueFromPipelineByPropertyName = true,
-        HelpMessage = "Gateway connection type.")]
+        HelpMessage = "Gateway connection type:IPsec/Vnet2Vnet/ExpressRoute/VPNClient")]
         [ValidateNotNullOrEmpty]
         [ValidateSet(
             MNM.VirtualNetworkGatewayConnectionType.IPsec,
             MNM.VirtualNetworkGatewayConnectionType.Vnet2Vnet,
-            MNM.VirtualNetworkGatewayConnectionType.Dedicated,
+            MNM.VirtualNetworkGatewayConnectionType.ExpressRoute,
             MNM.VirtualNetworkGatewayConnectionType.VPNClient,
             IgnoreCase = true)]
         public string ConnectionType { get; set; }
@@ -91,6 +98,20 @@ namespace Microsoft.Azure.Commands.Network
         ValueFromPipelineByPropertyName = true,
         HelpMessage = "The Ipsec share key.")]
         public string SharedKey { get; set; }
+
+        [Parameter(
+            Mandatory = false,
+            ValueFromPipelineByPropertyName = true,
+            ParameterSetName = "SetByResourceId",
+            HelpMessage = "PeerId")]
+        public string PeerId { get; set; }
+
+        [Parameter(
+            Mandatory = false,
+            ValueFromPipelineByPropertyName = true,
+            ParameterSetName = "SetByResource",
+            HelpMessage = "Peer")]
+        public PSPeering Peer { get; set; }
 
         [Parameter(
             Mandatory = false,
@@ -138,10 +159,28 @@ namespace Microsoft.Azure.Commands.Network
             vnetGatewayConnection.ConnectionType = this.ConnectionType;
             vnetGatewayConnection.RoutingWeight = this.RoutingWeight;
             vnetGatewayConnection.SharedKey = this.SharedKey;
+            if (!string.IsNullOrEmpty(this.AuthorizationKey))
+            {
+                vnetGatewayConnection.AuthorizationKey = this.AuthorizationKey;
+            }
+            
+
+            if (string.Equals(ParameterSetName, Microsoft.Azure.Commands.Network.Properties.Resources.SetByResource))
+            {
+                if (this.Peer != null)
+                {
+                    this.PeerId = this.Peer.Id;
+                }
+            }
+
+            if (!string.IsNullOrEmpty(this.PeerId))
+            {
+                vnetGatewayConnection.Peer = new PSResourceId();
+                vnetGatewayConnection.Peer.Id = this.PeerId;
+            }
 
             // Map to the sdk object
             var vnetGatewayConnectionModel = Mapper.Map<MNM.VirtualNetworkGatewayConnection>(vnetGatewayConnection);
-            vnetGatewayConnectionModel.Type = Microsoft.Azure.Commands.Network.Properties.Resources.VirtualNetworkGatewayConnectionType;
             vnetGatewayConnectionModel.Tags = TagsConversionHelper.CreateTagDictionary(this.Tag, validate: true);
 
             // Execute the Create VirtualNetworkConnection call

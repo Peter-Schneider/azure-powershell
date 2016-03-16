@@ -23,7 +23,7 @@ using MNM = Microsoft.Azure.Management.Network.Models;
 
 namespace Microsoft.Azure.Commands.Network
 {
-    [Cmdlet(VerbsCommon.Set, "AzureVirtualNetworkGatewayConnectionSharedKey"), OutputType(typeof(string))]
+    [Cmdlet(VerbsCommon.Set, "AzureRmVirtualNetworkGatewayConnectionSharedKey"), OutputType(typeof(string))]
     public class NewAzureVirtualNetworkGatewayConnectionSharedKeyCommand : VirtualNetworkGatewayConnectionBaseCmdlet
     {
         [Alias("ResourceName")]
@@ -47,7 +47,7 @@ namespace Microsoft.Azure.Commands.Network
          HelpMessage = "The virtual network connection shared key value.")]
         [ValidateNotNullOrEmpty]
         public string Value { get; set; }
-  
+
         [Parameter(
             Mandatory = false,
             HelpMessage = "Do not ask for confirmation if you want to overrite a resource")]

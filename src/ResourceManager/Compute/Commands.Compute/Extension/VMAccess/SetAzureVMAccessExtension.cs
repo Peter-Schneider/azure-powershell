@@ -17,19 +17,20 @@ using Microsoft.Azure.Commands.Compute.Models;
 using Microsoft.Azure.Management.Compute;
 using Microsoft.Azure.Management.Compute.Models;
 using Newtonsoft.Json;
-using System;
 using System.Collections;
 using System.Management.Automation;
+using AutoMapper;
 
 namespace Microsoft.Azure.Commands.Compute
 {
     [Cmdlet(
         VerbsCommon.Set,
         ProfileNouns.VirtualMachineAccessExtension)]
+    [OutputType(typeof(PSAzureOperationResponse))]
     public class SetAzureVMAccessExtensionCommand : VirtualMachineExtensionBaseCmdlet
     {
-        private const string userNameKey = "userName";
-        private const string passwordKey = "password";
+        private const string userNameKey = "UserName";
+        private const string passwordKey = "Password";
 
         [Parameter(
            Mandatory = true,
@@ -81,44 +82,49 @@ namespace Microsoft.Azure.Commands.Compute
         public string Password { get; set; }
 
         [Parameter(
+            Mandatory = false,
             Position = 6,
             ValueFromPipelineByPropertyName = true,
             HelpMessage = "The location.")]
         [ValidateNotNullOrEmpty]
         public string Location { get; set; }
 
-
         public override void ExecuteCmdlet()
         {
             base.ExecuteCmdlet();
 
-            Hashtable publicSettings = new Hashtable();
-            publicSettings.Add(userNameKey, UserName ?? "");
-
-            Hashtable privateSettings = new Hashtable();
-            privateSettings.Add(passwordKey, Password ?? "");
-
-            var SettingString = JsonConvert.SerializeObject(publicSettings);
-            var ProtectedSettingString = JsonConvert.SerializeObject(privateSettings);
-
-            var parameters = new VirtualMachineExtension
+            ExecuteClientAction(() =>
             {
-                Location = this.Location,
-                Name = this.Name,
-                Type = VirtualMachineExtensionType,
-                Publisher = VirtualMachineAccessExtensionContext.ExtensionDefaultPublisher,
-                ExtensionType = VirtualMachineAccessExtensionContext.ExtensionDefaultName,
-                TypeHandlerVersion = (this.TypeHandlerVersion) ?? VirtualMachineAccessExtensionContext.ExtensionDefaultVersion,
-                Settings = SettingString,
-                ProtectedSettings = ProtectedSettingString,
-            };
+                Hashtable publicSettings = new Hashtable();
+                publicSettings.Add(userNameKey, UserName ?? "");
 
-            var op = this.VirtualMachineExtensionClient.CreateOrUpdate(
-                this.ResourceGroupName,
-                this.VMName,
-                parameters);
+                Hashtable privateSettings = new Hashtable();
+                privateSettings.Add(passwordKey, Password ?? "");
 
-            WriteObject(op);
+                if (string.IsNullOrEmpty(this.Location))
+                {
+                    this.Location = GetLocationFromVm(this.ResourceGroupName, this.VMName);
+                }
+
+                var parameters = new VirtualMachineExtension
+                {
+                    Location = this.Location,
+                    VirtualMachineExtensionType = VirtualMachineAccessExtensionContext.ExtensionDefaultName,
+                    Publisher = VirtualMachineAccessExtensionContext.ExtensionDefaultPublisher,
+                    TypeHandlerVersion = (this.TypeHandlerVersion) ?? VirtualMachineAccessExtensionContext.ExtensionDefaultVersion,
+                    Settings = publicSettings,
+                    ProtectedSettings = privateSettings,
+                    AutoUpgradeMinorVersion = true
+                };
+
+                var op = this.VirtualMachineExtensionClient.CreateOrUpdateWithHttpMessagesAsync(
+                    this.ResourceGroupName,
+                    this.VMName,
+                    this.Name,
+                    parameters).GetAwaiter().GetResult();
+                var result = Mapper.Map<PSAzureOperationResponse>(op);
+                WriteObject(result);
+            });
         }
     }
 }

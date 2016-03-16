@@ -12,11 +12,16 @@
 // limitations under the License.
 // ----------------------------------------------------------------------------------
 
+using Microsoft.Azure.Management.Resources.Models;
 
 namespace Microsoft.Azure.Commands.Resources.Models
 {
     public class CreatePSResourceGroupDeploymentParameters : ValidatePSResourceGroupDeploymentParameters
     {
         public string DeploymentName { get; set; }
+
+        public DeploymentMode DeploymentMode { get; set; }
+
+        public string DeploymentDebugLogLevel { get; set; }
     }
 }

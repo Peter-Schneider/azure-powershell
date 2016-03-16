@@ -18,10 +18,11 @@ using Microsoft.Azure.Commands.Compute.Models;
 using Microsoft.Azure.Management.Compute;
 using System.Management.Automation;
 
+
 namespace Microsoft.Azure.Commands.Compute
 {
     [Cmdlet(VerbsCommon.Remove, ProfileNouns.AvailabilitySet)]
-    [OutputType(typeof(PSOperation))]
+    [OutputType(typeof(PSAzureOperationResponse))]
     public class RemoveAzureAvailabilitySetCommand : AvailabilitySetBaseCmdlet
     {
         [Parameter(
@@ -50,14 +51,18 @@ namespace Microsoft.Azure.Commands.Compute
         {
             base.ExecuteCmdlet();
 
-            if (this.Force.IsPresent
-            || this.ShouldContinue(Properties.Resources.AvailabilitySetRemovalConfirmation,
-                                   Properties.Resources.AvailabilitySetRemovalCaption))
+            ExecuteClientAction(() =>
             {
-                AzureOperationResponse op = this.AvailabilitySetClient.Delete(this.ResourceGroupName, this.Name);
-                var result = Mapper.Map<PSOperation>(op);
-                WriteObject(result);
-            }
+                if (this.Force.IsPresent
+                    || this.ShouldContinue(Properties.Resources.AvailabilitySetRemovalConfirmation, Properties.Resources.AvailabilitySetRemovalCaption))
+                {
+                    var op = this.AvailabilitySetClient.DeleteWithHttpMessagesAsync(
+                        this.ResourceGroupName,
+                        this.Name).GetAwaiter().GetResult();
+                    var result = Mapper.Map<PSAzureOperationResponse>(op);
+                    WriteObject(result);
+                }
+            });
         }
     }
 }

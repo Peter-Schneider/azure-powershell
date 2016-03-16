@@ -13,8 +13,8 @@
 // ----------------------------------------------------------------------------------
 
 using Microsoft.Azure;
-using Microsoft.Azure.Common.Authentication;
-using Microsoft.Azure.Common.Authentication.Models;
+using Microsoft.Azure.Commands.Common.Authentication;
+using Microsoft.Azure.Commands.Common.Authentication.Models;
 using Microsoft.Azure.Test;
 using Microsoft.Azure.Test.HttpRecorder;
 using Microsoft.WindowsAzure.Commands.Common.Test.Mocks;
@@ -26,6 +26,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Management.Automation;
 using System.Security.Cryptography.X509Certificates;
+using Microsoft.Azure.ServiceManagemenet.Common;
 
 namespace Microsoft.WindowsAzure.Commands.ScenarioTest
 {
@@ -50,8 +51,8 @@ namespace Microsoft.WindowsAzure.Commands.ScenarioTest
         {
             var datastore = new MemoryDataStore();
             AzureSession.DataStore = datastore;
-            var profile = new AzureProfile(Path.Combine(AzureSession.ProfileDirectory, AzureSession.ProfileFile));
-            AzurePSCmdlet.CurrentProfile = profile;
+            var profile = new AzureSMProfile(Path.Combine(AzureSession.ProfileDirectory, AzureSession.ProfileFile));
+            AzureSMCmdlet.CurrentProfile = profile;
             AzureSession.DataStore = datastore;
             ProfileClient = new ProfileClient(profile);
 
@@ -264,9 +265,9 @@ namespace Microsoft.WindowsAzure.Commands.ScenarioTest
 
         public virtual Collection<PSObject> RunPowerShellTest(params string[] scripts)
         {
-            using (var powershell = System.Management.Automation.PowerShell.Create())
+            using (var powershell = System.Management.Automation.PowerShell.Create(RunspaceMode.NewRunspace))
             {
-                SetupPowerShellModules(powershell);
+               SetupPowerShellModules(powershell);
 
                 Collection<PSObject> output = null;
                 for (int i = 0; i < scripts.Length; ++i)
@@ -276,7 +277,8 @@ namespace Microsoft.WindowsAzure.Commands.ScenarioTest
                 }
                 try
                 {
-                    output = powershell.Invoke();
+                   powershell.Runspace.Events.Subscribers.Clear();
+                   output = powershell.Invoke();
 
                     if (powershell.Streams.Error.Count > 0)
                     {
@@ -294,24 +296,31 @@ namespace Microsoft.WindowsAzure.Commands.ScenarioTest
                 finally
                 {
                     powershell.LogPowerShellResults(output);
+                    powershell.Streams.Error.Clear();
                 }
             }
         }
 
         private void SetupPowerShellModules(System.Management.Automation.PowerShell powershell)
         {
-            powershell.AddScript(string.Format("cd \"{0}\"", Environment.CurrentDirectory));
+            powershell.AddScript("$error.clear()");
+            powershell.AddScript(string.Format("cd \"{0}\"", AppDomain.CurrentDomain.BaseDirectory));
 
             foreach (string moduleName in modules)
             {
-                powershell.AddScript(string.Format("Import-Module \".\\{0}\"", moduleName));
+                powershell.AddScript(string.Format("Import-Module \"{0}\"",
+                    Path.Combine(AppDomain.CurrentDomain.BaseDirectory, moduleName)));
             }
 
+            powershell.AddScript(
+                string.Format(@"set-location {0}", AppDomain.CurrentDomain.BaseDirectory));
+            powershell.AddScript(string.Format(@"$TestOutputRoot='{0}'", AppDomain.CurrentDomain.BaseDirectory));
             powershell.AddScript("$VerbosePreference='Continue'");
             powershell.AddScript("$DebugPreference='Continue'");
             powershell.AddScript("$ErrorActionPreference='Stop'");
             powershell.AddScript("Write-Debug \"AZURE_TEST_MODE = $($env:AZURE_TEST_MODE)\"");
             powershell.AddScript("Write-Debug \"TEST_HTTPMOCK_OUTPUT =  $($env:TEST_HTTPMOCK_OUTPUT)\"");
         }
+
     }
 }

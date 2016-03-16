@@ -12,15 +12,13 @@
 // limitations under the License.
 // ----------------------------------------------------------------------------------
 
-using System;
-using System.Collections.Generic;
 using System.Management.Automation;
 using Microsoft.Azure.Management.Insights;
 
 namespace Microsoft.Azure.Commands.Insights.Autoscale
 {
     /// <summary>
-    /// Remove an Alert rule
+    /// Remove an autoscale setting.
     /// </summary>
     [Cmdlet(VerbsCommon.Remove, "AutoscaleSetting"), OutputType(typeof(AzureOperationResponse))]
     public class RemoveAutoscaleSettingCommand : ManagementCmdletBase
@@ -48,8 +46,10 @@ namespace Microsoft.Azure.Commands.Insights.Autoscale
         /// <summary>
         /// Execute the cmdlet
         /// </summary>
-        protected override void ExecuteCmdletInternal()
+        protected override void ProcessRecordInternal()
         {
+            WriteWarning("This cmdlet is being modified to enable better experience and may contain breaking changes in a future release.");
+
             AzureOperationResponse result = this.InsightsManagementClient.AutoscaleOperations.DeleteSettingAsync(resourceGroupName: this.ResourceGroup, autoscaleSettingName: this.Name).Result;
             WriteObject(result);
         }

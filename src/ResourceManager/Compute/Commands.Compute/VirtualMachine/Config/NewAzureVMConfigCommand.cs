@@ -25,7 +25,7 @@ namespace Microsoft.Azure.Commands.Compute
         ProfileNouns.VirtualMachineConfig),
     OutputType(
         typeof(PSVirtualMachine))]
-    public class NewAzureVMConfigCommand : AzurePSCmdlet
+    public class NewAzureVMConfigCommand : Microsoft.Azure.Commands.ResourceManager.Common.AzureRMCmdlet
     {
         [Alias("ResourceName", "Name")]
         [Parameter(
@@ -51,21 +51,26 @@ namespace Microsoft.Azure.Commands.Compute
         [ValidateNotNullOrEmpty]
         public string AvailabilitySetId { get; set; }
 
+        protected override bool IsUsageMetricEnabled
+        {
+            get { return true; }
+        }
+
         public override void ExecuteCmdlet()
         {
             var vm = new PSVirtualMachine
             {
                 Name = this.VMName,
-                AvailabilitySetReference = string.IsNullOrEmpty(this.AvailabilitySetId) ? null : new AvailabilitySetReference
+                AvailabilitySetReference = string.IsNullOrEmpty(this.AvailabilitySetId) ? null : new SubResource
                 {
-                    ReferenceUri = this.AvailabilitySetId
+                    Id = this.AvailabilitySetId
                 }
             };
 
             if (!string.IsNullOrEmpty(this.VMSize))
             {
                 vm.HardwareProfile = new HardwareProfile();
-                vm.HardwareProfile.VirtualMachineSize = this.VMSize;
+                vm.HardwareProfile.VmSize = this.VMSize;
             }
 
             WriteObject(vm);

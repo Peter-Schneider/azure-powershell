@@ -29,7 +29,7 @@ namespace Microsoft.Azure.Commands.Compute
         ProfileNouns.NetworkInterface),
     OutputType(
         typeof(PSVirtualMachine))]
-    public class RemoveAzureVMNetworkInterfaceCommand : AzurePSCmdlet
+    public class RemoveAzureVMNetworkInterfaceCommand : Microsoft.Azure.Commands.ResourceManager.Common.AzureRMCmdlet
     {
         [Alias("VMProfile")]
         [Parameter(
@@ -59,9 +59,9 @@ namespace Microsoft.Azure.Commands.Compute
                 if (networkProfile != null &&
                     networkProfile.NetworkInterfaces != null &&
                     networkProfile.NetworkInterfaces.Any(nic =>
-                        string.Equals(nic.ReferenceUri, id, StringComparison.OrdinalIgnoreCase)))
+                        string.Equals(nic.Id, id, StringComparison.OrdinalIgnoreCase)))
                 {
-                    var nicReference = networkProfile.NetworkInterfaces.First(nic => string.Equals(nic.ReferenceUri, id, StringComparison.OrdinalIgnoreCase));
+                    var nicReference = networkProfile.NetworkInterfaces.First(nic => string.Equals(nic.Id, id, StringComparison.OrdinalIgnoreCase));
                     networkProfile.NetworkInterfaces.Remove(nicReference);
                 }
             }

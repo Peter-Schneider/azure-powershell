@@ -17,7 +17,7 @@ using Xunit;
 
 namespace Commands.Network.Test.ScenarioTests
 {
-    public class VirtualNetworkGatewayConnectionTests
+    public class VirtualNetworkGatewayConnectionTests : Microsoft.WindowsAzure.Commands.Test.Utilities.Common.RMTestBase
     {
         [Fact]
         [Trait(Category.AcceptanceType, Category.CheckIn)]
@@ -31,6 +31,13 @@ namespace Commands.Network.Test.ScenarioTests
         public void TestVirtualNetworkGatewayConnectionSharedKeyCRUD()
         {
             NetworkResourcesController.NewInstance.RunPsTest("Test-VirtualNetworkGatewayConnectionSharedKeyCRUD");
+        }
+
+        [Fact]
+        [Trait(Category.AcceptanceType, Category.CheckIn)]
+        public void TestVirtualNetworkeExpressRouteGatewayConnectionCRUD()
+        {
+            NetworkResourcesController.NewInstance.RunPsTest("Test-VirtualNetworkeExpressRouteGatewayConnectionCRUD");
         }
     }
 }

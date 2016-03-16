@@ -12,7 +12,6 @@
 // limitations under the License.
 // ----------------------------------------------------------------------------------
 
-using System;
 using System.Linq;
 using System.Management.Automation;
 using System.Text;
@@ -69,14 +68,17 @@ namespace Microsoft.Azure.Commands.Insights.Metrics
         /// <summary>
         /// Execute the cmdlet
         /// </summary>
-        protected override void ExecuteCmdletInternal()
+        protected override void ProcessRecordInternal()
         {
+            WriteWarning("This cmdlet is being modified to enable better experience and may contain breaking changes in a future release.");
+
             string queryFilter = this.ProcessParameters();
             bool fullDetails = this.DetailedOutput.IsPresent;
 
             // Call the proper API methods to return a list of raw records.
             // If fullDetails is present full details of the records are displayed, otherwise only a summary of the records is displayed
             MetricDefinitionListResponse response = this.InsightsClient.MetricDefinitionOperations.GetMetricDefinitionsAsync(resourceUri: this.ResourceId, filterString: queryFilter, cancellationToken: CancellationToken.None).Result;
+
             var records = response.MetricDefinitionCollection.Value.Select(e => fullDetails ? (MetricDefinition)new PSMetricDefinition(e) : new PSMetricDefinitionNoDetails(e)).ToArray();
 
             WriteObject(sendToPipeline: records);

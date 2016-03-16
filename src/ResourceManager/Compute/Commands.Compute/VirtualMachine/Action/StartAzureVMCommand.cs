@@ -20,18 +20,10 @@ using System.Management.Automation;
 
 namespace Microsoft.Azure.Commands.Compute
 {
-    [Cmdlet(VerbsLifecycle.Start, ProfileNouns.VirtualMachine)]
-    [OutputType(typeof(PSComputeLongRunningOperation))]
-    public class StartAzureVMCommand : VirtualMachineBaseCmdlet
+    [Cmdlet(VerbsLifecycle.Start, ProfileNouns.VirtualMachine, DefaultParameterSetName = ResourceGroupNameParameterSet)]
+    [OutputType(typeof(PSAzureOperationResponse))]
+    public class StartAzureVMCommand : VirtualMachineActionBaseCmdlet
     {
-        [Parameter(
-           Mandatory = true,
-           Position = 0,
-           ValueFromPipelineByPropertyName = true,
-           HelpMessage = "The resource group name.")]
-        [ValidateNotNullOrEmpty]
-        public string ResourceGroupName { get; set; }
-
         [Parameter(
            Mandatory = true,
            Position = 1,
@@ -42,9 +34,16 @@ namespace Microsoft.Azure.Commands.Compute
 
         public override void ExecuteCmdlet()
         {
-            var op = this.VirtualMachineClient.Start(this.ResourceGroupName, this.Name);
-            var result = Mapper.Map<PSComputeLongRunningOperation>(op);
-            WriteObject(result);
+            base.ExecuteCmdlet();
+
+            ExecuteClientAction(() =>
+            {
+                var op = this.VirtualMachineClient.StartWithHttpMessagesAsync(
+                    this.ResourceGroupName,
+                    this.Name).GetAwaiter().GetResult();
+                var result = Mapper.Map<PSAzureOperationResponse>(op);
+                WriteObject(result);
+            });
         }
     }
 }

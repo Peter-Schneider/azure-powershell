@@ -18,11 +18,12 @@ using System.Linq;
 using System.Runtime.InteropServices;
 using System.Security;
 using System.Security.Permissions;
+using Microsoft.Azure.Commands.Common.Authentication.Models;
 using Microsoft.Azure.Commands.Sql.Common;
 using Microsoft.Azure.Commands.Sql.ServiceObjective.Model;
 using Microsoft.Azure.Commands.Sql.ServiceObjective.Services;
 using Microsoft.Azure.Commands.Sql.Services;
-using Microsoft.Azure.Common.Authentication.Models;
+using Microsoft.Azure.ServiceManagemenet.Common.Models;
 using Microsoft.Azure.Management.Sql;
 using Microsoft.Azure.Management.Sql.Models;
 
@@ -41,17 +42,17 @@ namespace Microsoft.Azure.Commands.Sql.ServiceObjective.Adapter
         /// <summary>
         /// Gets or sets the Azure profile
         /// </summary>
-        public AzureProfile Profile { get; set; }
+        public AzureContext Context { get; set; }
 
         /// <summary>
         /// Constructs a ServiceObjective adapter
         /// </summary>
         /// <param name="profile">The current azure profile</param>
         /// <param name="subscription">The current azure subscription</param>
-        public AzureSqlServerServiceObjectiveAdapter(AzureProfile profile, AzureSubscription subscription)
+        public AzureSqlServerServiceObjectiveAdapter(AzureContext context)
         {
-            Profile = profile;
-            Communicator = new AzureSqlServerServiceObjectiveCommunicator(Profile, subscription);
+            Context = context;
+            Communicator = new AzureSqlServerServiceObjectiveCommunicator(Context);
         }
 
         /// <summary>

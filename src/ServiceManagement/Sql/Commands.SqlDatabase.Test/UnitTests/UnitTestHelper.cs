@@ -23,9 +23,10 @@ using System.Reflection;
 using System.Security.Cryptography.X509Certificates;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 using Microsoft.WindowsAzure.Commands.Common;
-using Microsoft.Azure.Common.Authentication.Models;
+using Microsoft.Azure.Commands.Common.Authentication.Models;
 using Microsoft.WindowsAzure.Commands.SqlDatabase.Test.UnitTests.MockServer;
-using Microsoft.Azure.Common.Authentication;
+using Microsoft.Azure.Commands.Common.Authentication;
+using Microsoft.Azure.ServiceManagemenet.Common;
 using Microsoft.WindowsAzure.Commands.Utilities.Common;
 
 namespace Microsoft.WindowsAzure.Commands.SqlDatabase.Test.UnitTests
@@ -293,10 +294,10 @@ namespace Microsoft.WindowsAzure.Commands.SqlDatabase.Test.UnitTests
                 "clientCertificate",
                 certificate);
 
-            var profile = new AzureProfile(Path.Combine(AzureSession.ProfileDirectory, AzureSession.ProfileFile));
-            AzurePSCmdlet.CurrentProfile = profile;
+            var profile = new AzureSMProfile(Path.Combine(AzureSession.ProfileDirectory, AzureSession.ProfileFile));
+            AzureSMCmdlet.CurrentProfile = profile;
             ProfileClient client = new ProfileClient(profile);
-            client.Profile.Environments[UnitTestEnvironmentName] = new AzureEnvironment
+            client.AddOrSetEnvironment(new AzureEnvironment
                 {
                     Name = UnitTestEnvironmentName,
                     Endpoints = new Dictionary<AzureEnvironment.Endpoint, string>
@@ -304,7 +305,7 @@ namespace Microsoft.WindowsAzure.Commands.SqlDatabase.Test.UnitTests
                         {AzureEnvironment.Endpoint.ServiceManagement, MockHttpServer.DefaultHttpsServerPrefixUri.AbsoluteUri},
                         {AzureEnvironment.Endpoint.SqlDatabaseDnsSuffix, ".database.windows.net"}
                     }
-                };
+                });
             
             var account = new AzureAccount
             {
@@ -322,7 +323,7 @@ namespace Microsoft.WindowsAzure.Commands.SqlDatabase.Test.UnitTests
 
             client.AddOrSetAccount(account);
             client.AddOrSetSubscription(subscription);
-            client.SetSubscriptionAsDefault(UnitTestSubscriptionName, account.Id);
+            client.SetSubscriptionAsDefault(subscriptionId, account.Id);
             client.Profile.Save();
 
             return subscription;

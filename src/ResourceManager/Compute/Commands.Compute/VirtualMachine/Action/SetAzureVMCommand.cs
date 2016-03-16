@@ -15,27 +15,17 @@
 using Microsoft.Azure.Commands.Compute.Common;
 using Microsoft.Azure.Management.Compute;
 using System.Management.Automation;
+using AutoMapper;
+using Microsoft.Azure.Commands.Compute.Models;
 
 namespace Microsoft.Azure.Commands.Compute
 {
-    [Cmdlet(VerbsCommon.Set, ProfileNouns.VirtualMachine, DefaultParameterSetName = GeneralizeVirtualMachineParamSet)]
-    [OutputType(typeof(AzureOperationResponse))]
-    public class SetAzureVMCommand : VirtualMachineBaseCmdlet
+    [Cmdlet(VerbsCommon.Set, ProfileNouns.VirtualMachine, DefaultParameterSetName = ResourceGroupNameParameterSet)]
+    [OutputType(typeof(PSAzureOperationResponse))]
+    public class SetAzureVMCommand : VirtualMachineActionBaseCmdlet
     {
-        protected const string GeneralizeVirtualMachineParamSet = "GeneralizeVirtualMachineParamSet";
-
         [Parameter(
            Mandatory = true,
-           ParameterSetName = GeneralizeVirtualMachineParamSet,
-           Position = 0,
-           ValueFromPipelineByPropertyName = true,
-           HelpMessage = "The resource group name.")]
-        [ValidateNotNullOrEmpty]
-        public string ResourceGroupName { get; set; }
-
-        [Parameter(
-           Mandatory = true,
-           ParameterSetName = GeneralizeVirtualMachineParamSet,
            Position = 1,
            ValueFromPipelineByPropertyName = true,
            HelpMessage = "The virtual machine name.")]
@@ -43,20 +33,47 @@ namespace Microsoft.Azure.Commands.Compute
         public string Name { get; set; }
 
         [Parameter(
-            Mandatory = true,
-            ParameterSetName = GeneralizeVirtualMachineParamSet,
+            Mandatory = false,
             Position = 2,
             ValueFromPipelineByPropertyName = true,
             HelpMessage = "To generalize virtual machine.")]
         [ValidateNotNullOrEmpty]
         public SwitchParameter Generalized { get; set; }
 
+        [Parameter(
+            Mandatory = false,
+            Position = 2,
+            ValueFromPipelineByPropertyName = true,
+            HelpMessage = "To generalize virtual machine.")]
+        [ValidateNotNullOrEmpty]
+        public SwitchParameter Redeploy { get; set; }
+
         public override void ExecuteCmdlet()
         {
             base.ExecuteCmdlet();
 
-            var op = this.VirtualMachineClient.Generalize(this.ResourceGroupName, this.Name);
-            WriteObject(op);
+            if (this.Generalized.IsPresent)
+            {
+                ExecuteClientAction(() =>
+                {
+                    var op = this.VirtualMachineClient.GeneralizeWithHttpMessagesAsync(
+                        this.ResourceGroupName,
+                        this.Name).GetAwaiter().GetResult();
+                    var result = Mapper.Map<PSAzureOperationResponse>(op);
+                    WriteObject(result);
+                });
+            }
+            else if (this.Redeploy.IsPresent)
+            {
+                ExecuteClientAction(() =>
+                {
+                    var op = this.VirtualMachineClient.RedeployWithHttpMessagesAsync(
+                        this.ResourceGroupName,
+                        this.Name).GetAwaiter().GetResult();
+                    var result = Mapper.Map<PSAzureOperationResponse>(op);
+                    WriteObject(result);
+                });
+            }
         }
     }
 }

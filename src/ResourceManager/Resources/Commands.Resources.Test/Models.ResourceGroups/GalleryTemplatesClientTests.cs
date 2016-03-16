@@ -21,29 +21,30 @@ using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.Azure.Commands.Resources.Models;
+using Microsoft.Azure.Common.OData;
 using Microsoft.Azure.Gallery;
 using Microsoft.Azure.Gallery.Models;
 using Microsoft.WindowsAzure.Commands.ScenarioTest;
 using Microsoft.WindowsAzure.Commands.Test.Utilities.Common;
 using Moq;
 using Xunit;
-using Microsoft.Azure.Common.OData;
+using System;
 
 namespace Microsoft.Azure.Commands.Resources.Test.Models
 {
-    public class GalleryTemplatesClientTests : TestBase
+    public class GalleryTemplatesClientTests : RMTestBase
     {
         private GalleryTemplatesClient galleryTemplatesClient;
 
         private Mock<IGalleryClient> galleryClientMock;
 
-        private string templateFile = @"Resources\sampleTemplateFile.json";
+        private string templateFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"Resources\sampleTemplateFile.json");
 
-        private string invalidTemplateFile = @"Resources\invalidTemplateFile.json";
+        private string invalidTemplateFile = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"Resources\invalidTemplateFile.json");
 
-        private string templateParameterFileSchema1 = @"Resources\sampleTemplateParameterFile.json";
+        private string templateParameterFileSchema1 = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"Resources\sampleTemplateParameterFile.json");
 
-        private string templateParameterFileSchema2 = @"Resources\sampleTemplateParameterFileSchema2.json";
+        private string templateParameterFileSchema2 = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, @"Resources\sampleTemplateParameterFileSchema2.json");
 
         public GalleryTemplatesClientTests()
         {
